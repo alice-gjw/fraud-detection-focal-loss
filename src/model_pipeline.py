@@ -9,6 +9,7 @@ from sklearn.metrics import confusion_matrix, classification_report, precision_r
 import torch.nn.functional as F
 from typing import Dict, List, Optional, Union, Tuple, Any
 import yaml
+from config.logging_config import logger
 
 
 class ModelPipeline:
@@ -79,15 +80,15 @@ class ModelPipeline:
             self.model (nn.Sequential)
         """
 
-        print(f"======= {self.model_name} =======")
+        logger.info(f"======= {self.model_name} =======")
 
 
         # LAYER SIZES
         if layer_sizes is not None:
-            print(f"Layer size: {[self.input_features] + layer_sizes}")
+            logger.info(f"Layer size: {[self.input_features] + layer_sizes}")
 
         layer_sizes = self.config['layer_sizes']
-        print(f"Layer size: {[self.input_features] + layer_sizes}")
+        logger.info(f"Layer size: {[self.input_features] + layer_sizes}")
 
 
         # INITIALIZER
@@ -104,7 +105,7 @@ class ModelPipeline:
             raise ValueError(f"Unable to identify initializer from map.")
 
         initializer = initializer_map[initializer_key]
-        print(f"Initializer: {initializer.__name__}")
+        logger.info(f"Initializer: {initializer.__name__}")
 
 
         # ACTIVATION FUNCTION
@@ -122,7 +123,7 @@ class ModelPipeline:
             raise ValueError(f"Unidentified Activation Function in config file.")
 
         activ_fn = activ_fn_map[activ_fn_key]
-        print(f"Activation Function: {activ_fn}")
+        logger.info(f"Activation Function: {activ_fn}")
 
 
         # FINAL ACTIVATION LAYER
@@ -139,10 +140,10 @@ class ModelPipeline:
 
         if activ_final_key is None:
             activ_final = None
-            print("No final activation function layer")
+            logger.info("No final activation function layer")
         elif activ_final_key in activ_final_map:
             activ_final = activ_final_map[activ_final_key]
-            print(f"Final Activation Function: {activ_final}")
+            logger.info(f"Final Activation Function: {activ_final}")
 
 
         # BUILDING LAYERS
@@ -150,38 +151,38 @@ class ModelPipeline:
         prev_size = self.input_features
         architecture = self.config['architecture']
 
-        print("\n========== Building model ===========")
+        logger.info("========== Building model ===========")
 
         for curr_size in layer_sizes[:-1]: # All except the last layer
-            print(f"nn.Linear({prev_size}, {curr_size})")
+            logger.info(f"nn.Linear({prev_size}, {curr_size})")
             input_layer = nn.Linear(prev_size, curr_size)
             initializer(input_layer.weight)  # Apply weight initialization
             layers.append(input_layer) # Input layer
 
             if architecture == 'batchnorm':
-                print(f"nn.BatchNorm1d({curr_size})")
+                logger.info(f"nn.BatchNorm1d({curr_size})")
                 layers.append(nn.BatchNorm1d(curr_size))
 
-            print(f"Activation: {type(activ_fn).__name__}")
+            logger.info(f"Activation: {type(activ_fn).__name__}")
             layers.append(activ_fn)
 
             if architecture == 'dropout':
-                print(f"Layer: nn.Dropout({self.config['dropout_rate']})")
+                logger.info(f"Layer: nn.Dropout({self.config['dropout_rate']})")
                 layers.append(nn.Dropout(self.config['dropout_rate']))
 
             prev_size = curr_size
 
-        print(f"Final layer: nn.Linear({prev_size}, {layer_sizes[-1]})")
+        logger.info(f"Final layer: nn.Linear({prev_size}, {layer_sizes[-1]})")
         output_layer = nn.Linear(prev_size, layer_sizes[-1])
         initializer(output_layer.weight)
         layers.append(output_layer) # Add final layer
 
         # Only add final activation if one is specified
         if activ_final is not None:
-            print(f"Final activation layer: {type(activ_final).__name__}")
+            logger.info(f"Final activation layer: {type(activ_final).__name__}")
             layers.append(activ_final)
 
-        print("=====================================")
+        logger.info("=====================================")
 
         self.model = nn.Sequential(*layers)
         return self.model
@@ -271,7 +272,7 @@ class ModelPipeline:
             self.loss_fn = focal_loss
             loss_name = "Focal Loss"
 
-        print(f"\nLoss Function: {loss_name}")
+        logger.info(f"Loss Function: {loss_name}")
         return self.loss_fn
 
 
@@ -289,10 +290,10 @@ class ModelPipeline:
         """
         # LEARNING RATE
         if learning_rate is not None:
-            print(f"Learning Rate: {learning_rate}")
+            logger.info(f"Learning Rate: {learning_rate}")
 
         learning_rate = self.config['learning_rate']
-        print(f"Learning rate: {learning_rate}")
+        logger.info(f"Learning rate: {learning_rate}")
 
 
         # OPTIMIZER
@@ -308,7 +309,7 @@ class ModelPipeline:
             raise ValueError(f"Unable to identify Optimizer from the map.")
 
         optimizer = optimizer_map[optimizer_key]
-        print(f"Optimizer: {optimizer.__name__}")
+        logger.info(f"Optimizer: {optimizer.__name__}")
 
         self.optimizer = optimizer(self.model.parameters(), lr=learning_rate)
         return self.optimizer
@@ -324,8 +325,8 @@ class ModelPipeline:
             train_batch_size (int):
             test_batch_size (int):
         """
-        print(f"\nTrain Batch Size: {self.config['train_batch_size']}")
-        print(f"Test Batch Size: {self.config['test_batch_size']}")
+        logger.info(f"Train Batch Size: {self.config['train_batch_size']}")
+        logger.info(f"Test Batch Size: {self.config['test_batch_size']}")
 
         self.train_loader = self.data_pipeline.create_train_dataloader()
         self.test_loader = self.data_pipeline.create_test_dataloader()
@@ -360,9 +361,9 @@ class ModelPipeline:
         df_cm = pd.DataFrame(conf_matrix,
                             index=['No Fraud', 'Fraud'],
                             columns=['No Fraud', 'Fraud'])
-        print("\n==== Confusion Matrix ====")
-        print(df_cm)
-        print(f"Total samples: 284807")
+        logger.info("==== Confusion Matrix ====")
+        logger.info(f"\n{df_cm}")
+        logger.info("Total samples: 284807")
 
         # Create subplots
         fig, axes = plt.subplots(3, 1, figsize=(12, 18))
@@ -450,8 +451,8 @@ class ModelPipeline:
         recall_scores = []
         f1_scores = []
 
-        print(f"\nProbability threshold set to {self.config['threshold']}.")
-        print("Beginning training and evaluation.")
+        logger.info(f"Probability threshold set to {self.config['threshold']}.")
+        logger.info("Beginning training and evaluation.")
 
         # Loop for training and evaluation
         for epoch_idx in range(epochs):
@@ -513,8 +514,8 @@ class ModelPipeline:
                 best_epoch = epoch_idx + 1
 
             # Print results for this epoch
-            print(f"\nEpoch {epoch_idx + 1}/{self.config['epochs']} completed. "
-                f"\nTrain Loss: {avg_train_loss:.4f} | Test Loss: {avg_test_loss:.4f} | "
+            logger.info(f"Epoch {epoch_idx + 1}/{self.config['epochs']} completed. "
+                f"Train Loss: {avg_train_loss:.4f} | Test Loss: {avg_test_loss:.4f} | "
                 f"Precision: {precision:.4f} | Recall: {recall:.4f} | F1: {f1:.4f}")
 
             # Store metrics for plotting
@@ -525,7 +526,7 @@ class ModelPipeline:
             f1_scores.append(f1)
 
         # End loop
-        print(f"\nBest F1 score: {best_f1:.4f} at Epoch {best_epoch}")
+        logger.info(f"Best F1 score: {best_f1:.4f} at Epoch {best_epoch}")
 
         self.plot_graphs(
             train_loss=train_loss,

@@ -10,6 +10,7 @@ from torch import nn, optim
 import torch.nn.functional as F
 from typing import Dict, List, Optional, Union, Tuple, Any
 import yaml
+from config.logging_config import logger
 
 class FocalLoss:
     """
@@ -44,10 +45,9 @@ class FocalLoss:
         self.alpha = alpha if alpha is not None else config['best_alpha']
         self.gamma = gamma if gamma is not None else config['best_gamma']
 
-        # Automatically set up data loaders
         self.train_loader = self.data_pipeline.create_train_dataloader()
         self.test_loader = self.data_pipeline.create_test_dataloader()
-        print("Data loaders initialized.")
+        logger.info("Data loaders initialized.")
 
     def __call__(self, y_hat, y_true):
         """
@@ -127,9 +127,8 @@ class FocalLoss:
         Returns:
             Tuple[nn.Module, float]: Trained model and final loss
         """
-        print("Starting focal loss hyperparameter tuning ...")
+        logger.info("Starting focal loss hyperparameter tuning ...")
 
-        # Create fresh model for each grid search iteration
         model = self.focal_model()
         optimizer = optim.Adam(model.parameters(), lr=self.config['learning_rate'])
 
@@ -179,7 +178,6 @@ class FocalLoss:
         # Convert predictions to binary (threshold = 0.5)
         binary_predictions = (all_predictions > 0.5).astype(int)
 
-        # Calculate metrics
         precision = precision_score(all_targets, binary_predictions, zero_division=0)
         recall = recall_score(all_targets, binary_predictions, zero_division=0)
         f1 = f1_score(all_targets, binary_predictions, zero_division=0)
@@ -206,7 +204,7 @@ class FocalLoss:
         gamma_grid = self.config['focal_loss_config']['gamma_grid']
         priority_metric = self.config['priority_metric']
 
-        print(f"\nStarting Random Search with {n_iterations} out of {len(alpha_grid) * len(gamma_grid)} combinations, running 5 epochs per test. "
+        logger.info(f"Starting Random Search with {n_iterations} out of {len(alpha_grid) * len(gamma_grid)} combinations, running 5 epochs per test. "
                 f"{priority_metric} as decision metric.")
 
         results = []
@@ -218,7 +216,7 @@ class FocalLoss:
             alpha = random.choice(alpha_grid)
             gamma = random.choice(gamma_grid)
 
-            print(f"\nCurrently testing combination {i+1}/{n_iterations}: "
+            logger.info(f"Currently testing combination {i+1}/{n_iterations}: "
                     f"[alpha {alpha}, gamma {gamma}] ...")
 
             trained_model, final_loss = self.focal_train(alpha, gamma, epochs=5)
@@ -237,16 +235,14 @@ class FocalLoss:
             }
             results.append(result)
 
-            # Update best parameters if current score is better
             if current_score > best_score:
                 best_score = current_score
                 best_params = {'alpha': alpha, 'gamma': gamma}
                 best_model = trained_model
 
-            # Print best results for current combination tested over 5 epochs
-            print(f"Best results for hyperparameter [alpha: {alpha}, gamma: {gamma}] | "
+            logger.info(f"Best results for hyperparameter [alpha: {alpha}, gamma: {gamma}] | "
                     f"Precision: {metrics['precision']:.5f} | Recall: {metrics['recall']:.5f} | F1: {metrics['f1_score']:.5f}")
 
-        print(f"\nRandom Search complete.")
-        print(f"Best parameters: {best_params}")
-        print(f"Best {priority_metric}: {best_score:.5f}")
+        logger.info("Random Search complete.")
+        logger.info(f"Best parameters: {best_params}")
+        logger.info(f"Best {priority_metric}: {best_score:.5f}")

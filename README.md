@@ -4,31 +4,15 @@ A deep learning project for detecting fraudulent credit card transactions using 
 
 ## Project Overview
 
-Credit card fraud detection presents a challenging machine learning problem due to severe class imbalance (typically <0.2% fraud cases). This project implements:
+Credit card fraud detection presents a challenging machine learning problem due to severe class imbalance (typically <0.2% fraud cases). 
 
-1. **PyTorch-based neural network pipeline** with configurable architectures
-2. **Focal Loss implementation** for handling class imbalance
-3. **MLP from scratch** using only NumPy to demonstrate core neural network concepts
-4. **Hyperparameter tuning** via randomized search
+Loss Function Comparisons 
+- 1. BCE
+- 2. BCEWithLogits
+- 3. Weighted BCE (1:289)
+- 4. Focal Loss 
 
-## Key Features
-
-- **Focal Loss**: Custom loss function that down-weights easy examples and focuses on hard-to-classify cases
-- **Modular Design**: Separate classes for data preprocessing, model training, and evaluation
-- **Configuration-Driven**: YAML-based configuration for all hyperparameters
-- **Multiple Loss Functions**: BCE, weighted BCE, and Focal Loss
-- **Comprehensive Metrics**: Precision, recall, F1-score tracking with visualization
-
-## Focal Loss: The Core Innovation
-
-### The Problem with Standard Cross-Entropy
-
-In fraud detection, the extreme class imbalance (99.8% legitimate vs 0.2% fraud) causes standard cross-entropy loss to:
-- Focus excessively on the majority class
-- Produce models that predict "not fraud" for everything
-- Achieve high accuracy but miss actual fraud cases
-
-### Focal Loss Solution
+### Focal Loss Testing
 
 Focal Loss, introduced by Lin et al. in ["Focal Loss for Dense Object Detection"](https://arxiv.org/abs/1708.02002), addresses this by adding a modulating factor that down-weights easy examples:
 
@@ -82,19 +66,19 @@ With γ=2:
 ## Project Structure
 
 ```
-fraud-detection-neural-network/
+fraud-detection-focal-loss/
 ├── README.md
+├── pyproject.toml            # Project dependencies
+├── config/
+│   ├── config.yaml           # All hyperparameters
+│   └── logging_config.py     # Logging setup
 ├── src/
 │   ├── __init__.py
-│   ├── config.yaml          # All hyperparameters
-│   ├── data_pipeline.py     # Data loading and preprocessing
-│   ├── focal_loss.py        # Focal loss implementation
-│   ├── model_pipeline.py    # PyTorch training pipeline
-│   └── mlp.py               # MLP from scratch with NumPy
-└── tests/
-    ├── __init__.py
-    └── test_mlp.py          # Unit tests
-```
+│   ├── data_pipeline.py      # Data loading and preprocessing
+│   ├── focal_loss.py         # Focal loss implementation + tuning
+│   └── model_pipeline.py     # PyTorch training pipeline
+└── experiment_focal_loss_tuning.ipynb
+
 
 ## Installation
 
@@ -141,21 +125,6 @@ focal = FocalLoss(config)
 best_params = focal.focal_random_search(n_iterations=10)
 ```
 
-### MLP from Scratch
-
-```python
-from src.mlp import MLPTwoLayers
-
-# Create model
-model = MLPTwoLayers(input_size=29, hidden_size=100, output_size=2)
-
-# Training loop
-for x, y in training_data:
-    predictions = model.forward(x)
-    loss = model.loss(predictions, y)
-    model.backward()
-```
-
 ## Model Architecture
 
 The default neural network architecture:
@@ -199,33 +168,19 @@ layer_sizes: [20, 12, 6, 3, 1]
 dropout_rate: 0.3
 ```
 
-## Results
+## Hypothesis
 
 With optimized focal loss (α=0.6, γ=4.0):
 - Significantly improved recall for fraud detection
 - Better F1-score compared to standard BCE loss
 - Reduced false negatives (missed fraud cases)
 
-## Technical Highlights
 
-### Numerical Stability
+### Dealing w/ Numerical Stability
 - Log-sum-exp trick in softmax to prevent overflow
 - Epsilon clipping in log operations to prevent -inf
 - Gradient clipping in sigmoid to prevent vanishing gradients
 
-### Loss Functions Compared
-
-| Loss Function | Handles Imbalance | Focus on Hard Examples |
-|---------------|-------------------|------------------------|
-| BCE | No | No |
-| Weighted BCE | Yes (static) | No |
-| Focal Loss | Yes (adaptive) | Yes |
-
 ## References
 
 - Lin, T.Y., et al. (2017). [Focal Loss for Dense Object Detection](https://arxiv.org/abs/1708.02002)
-- He, K., et al. (2015). [Delving Deep into Rectifiers: Surpassing Human-Level Performance on ImageNet Classification](https://arxiv.org/abs/1502.01852) (He initialization)
-
-## License
-
-MIT License

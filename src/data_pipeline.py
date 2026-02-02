@@ -4,6 +4,7 @@ import yaml
 import numpy as np
 from torch.utils.data import DataLoader, TensorDataset, random_split
 from sklearn.preprocessing import StandardScaler
+from config.logging_config import logger
 
 
 class DataPipeline():
@@ -27,10 +28,8 @@ class DataPipeline():
         X = df.drop(columns=[self.config['target']])
         y = df[self.config['target']]
 
-        # Double brackets returns DataFrame, single brackets for Series
         X[['Amount']] = self.scaler.fit_transform(X[['Amount']])
 
-        # Convert to tensors
         X_tensor = torch.FloatTensor(X.values)
         y_tensor = torch.FloatTensor(y.values)
 
@@ -49,10 +48,8 @@ class DataPipeline():
         X = df.drop(columns=[self.config['target']])
         y = df[self.config['target']]
 
-        # Double brackets returns DataFrame, single brackets for Series
         X[['Amount']] = self.scaler.fit_transform(X[['Amount']])
 
-        # Convert to numpy arrays
         X_array = X.values.astype(np.float32)
         y_array = y.values.astype(np.float32)
 
@@ -67,7 +64,6 @@ class DataPipeline():
         else:
             generator = torch.Generator()
 
-        # PyTorch random_split() requires exact sample counts
         exact_train_size = int(len(self.dataset) * self.config['train_size'])
         exact_test_size = len(self.dataset) - exact_train_size
 
@@ -116,7 +112,6 @@ class DataPipeline():
         train_size = int((1 - val_ratio) * len(self.train_dataset))
         val_size = len(self.train_dataset) - train_size
 
-        # Use same random state for reproducibility
         generator = torch.Generator().manual_seed(self.config['random_state'])
         self.train_dataset, self.val_dataset = random_split(
             self.train_dataset,
@@ -124,7 +119,7 @@ class DataPipeline():
             generator=generator
         )
 
-        print(f"Validation split created - Train: {train_size}, Val: {val_size}")
+        logger.info(f"Validation split created - Train: {train_size}, Val: {val_size}")
 
         return DataLoader(
             self.val_dataset,
