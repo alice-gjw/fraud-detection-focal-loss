@@ -1,0 +1,54 @@
+# Configuration file for Fraud Detection Neural Network
+# All hyperparameters and settings are centralized here
+
+# ===== DATA PIPELINE CONFIGS =====
+data_path: data/credit_card.csv
+target: "Class"
+train_size: 0.8
+test_size: 0.2
+random_state: 42
+input_features: 29
+train_batch_size: 64
+test_batch_size: 512
+
+# ===== MODEL ARCHITECTURE =====
+layer_sizes: [20, 12, 6, 3, 1]
+architecture: dropout  # Options: dropout, batchnorm, null
+dropout_rate: 0.3
+initializer: "kaiming_normal"  # Options: xavier_normal, xavier_uniform, kaiming_normal, kaiming_uniform
+activ_fn: "relu"  # Options: relu, sigmoid, tanh, leaky_relu, elu
+activ_final: null  # Options: null, sigmoid, tanh, softmax, log_softmax
+
+# ===== TRAINING CONFIGS =====
+learning_rate: 0.001
+optimizer: "adam"  # Options: adam, sgd, rmsprop
+epochs: 10
+loss_fn: "bcewithlogitsloss"  # Options: bceloss, bcewithlogitsloss, classweights, focalloss
+
+# ===== FOCAL LOSS CONFIGS =====
+# Focal Loss: FL(p_t) = -alpha_t * (1 - p_t)^gamma * log(p_t)
+# alpha: class balancing weight (higher = more weight to positive class)
+# gamma: focusing parameter (higher = more focus on hard examples)
+focal_loss_config:
+  alpha_grid: [0.05, 0.1, 0.15, 0.25, 0.3]
+  gamma_grid: [1, 2, 3, 4, 5]
+
+# Best hyperparameters from random search (update after tuning)
+alpha: 0.6
+gamma: 4.0
+best_alpha: 0.6
+best_gamma: 4.0
+
+# ===== CLASS WEIGHTS CONFIGS =====
+# For weighted BCE loss to handle class imbalance
+# [negative_weight, positive_weight] - ratio ~1:578 for fraud detection
+class_weights: [0.501, 289.4]
+
+# ===== EARLY STOPPING CONFIGS =====
+patience: 5
+min_delta: 0.001
+max_epochs: 100
+
+# ===== EVALUATION CONFIGS =====
+threshold: 0.5
+priority_metric: "f1_score"  # Options: precision, recall, f1_score
